@@ -1,0 +1,24 @@
+runConfig:
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 100
+
+env:
+  - variable: VITE_APP_FIREBASE_CONFIG
+    secret: VITE_APP_FIREBASE_CONFIG
+  - variable: VITE_APP_PIN_HASH
+    secret: VITE_APP_PIN_HASH
+  - variable: VITE_APP_LIBRARY_URL
+    value: https://libraries.excalidraw.com
+  - variable: VITE_APP_LIBRARY_BACKEND
+    value: https://us-central1-excalidraw-room-persistence.cloudfunctions.net/libraries
+  - variable: VITE_APP_ENABLE_TRACKING
+    value: "false"
+  - variable: VITE_APP_DEBUG_ENABLE_TEXT_CONTAINER_BOUNDING_BOX
+    value: "false"
+  - variable: VITE_APP_COLLAPSE_OVERLAY
+    value: "false"
+  - variable: VITE_APP_ENABLE_ESLINT
+    value: "false"
