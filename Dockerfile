@@ -1,3 +1,7 @@
+ARG BUILDPLATFORM=linux/amd64
+ARG TARGETPLATFORM=linux/amd64
+ARG TARGETARCH=amd64
+
 FROM --platform=${BUILDPLATFORM} node:18 AS build
 
 WORKDIR /opt/node_app
