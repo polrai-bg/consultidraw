@@ -1,7 +1,9 @@
 import { DefaultSidebar } from "@excalidraw/excalidraw";
+
 import { useAtomValue } from "../app-jotai";
 
 import { currentClientIdAtom } from "../store/drawingState";
+
 import { ClientList } from "./ClientList";
 import { DrawingList } from "./DrawingList";
 
