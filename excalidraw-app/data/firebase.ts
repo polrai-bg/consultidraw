@@ -4,7 +4,6 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -23,7 +22,7 @@ import {
   listAll,
 } from "firebase/storage";
 
-import type { ExcalidrawElement, FileId } from "@excalidraw/element/types";
+import type { ExcalidrawElement } from "@excalidraw/element/types";
 import type {
   AppState,
   BinaryFileData,

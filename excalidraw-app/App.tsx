@@ -53,7 +53,6 @@ import type {
   BinaryFiles,
   ExcalidrawInitialDataState,
   UIAppState,
-  ExcalidrawProps,
 } from "@excalidraw/excalidraw/types";
 import type { ResolutionType } from "@excalidraw/common/utility-types";
 import type { ResolvablePromise } from "@excalidraw/common/utils";
@@ -65,7 +64,6 @@ import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import { TopErrorBoundary } from "./components/TopErrorBoundary";
-import { PinGate } from "./components/PinGate";
 import { saveScene } from "./data/firebase";
 import {
   currentClientIdAtom,
@@ -153,7 +151,7 @@ const initializeScene = async (opts: {
 
   const localDataState = importFromLocalStorage();
 
-  let scene: Omit<RestoredDataState, "files"> & {
+  const scene: Omit<RestoredDataState, "files"> & {
     scrollToContent?: boolean;
   } = {
     elements: restoreElements(localDataState?.elements, null, {
@@ -630,13 +628,11 @@ const ExcalidrawWrapper = () => {
 const ExcalidrawApp = () => {
   return (
     <TopErrorBoundary>
-      <PinGate>
-        <Provider store={appJotaiStore}>
-          <ExcalidrawAPIProvider>
-            <ExcalidrawWrapper />
-          </ExcalidrawAPIProvider>
-        </Provider>
-      </PinGate>
+      <Provider store={appJotaiStore}>
+        <ExcalidrawAPIProvider>
+          <ExcalidrawWrapper />
+        </ExcalidrawAPIProvider>
+      </Provider>
     </TopErrorBoundary>
   );
 };
