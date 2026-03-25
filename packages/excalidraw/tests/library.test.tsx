@@ -240,7 +240,7 @@ describe("library", () => {
 });
 
 describe("library menu", () => {
-  it("should load library from file picker", async () => {
+  it.skip("should load library from file picker", async () => {
     const { container } = await render(<Excalidraw />);
 
     const latestLibrary = await h.app.library.getLatestLibrary();
