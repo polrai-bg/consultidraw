@@ -650,7 +650,7 @@ const AuthGate = () => {
     return () => unsubscribe();
   }, [setCurrentUser, setIsAuthenticated]);
 
-  return isAuthenticated ? <AuthGate /> : <AuthScreen />;
+  return isAuthenticated ? <ExcalidrawWrapper /> : <AuthScreen />;
 };
 
 const ExcalidrawApp = () => {
