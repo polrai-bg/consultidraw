@@ -60,4 +60,19 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on port ${PORT}`);
   console.log(`Served directory: ${BUILD_DIR}`);
+  
+  // Debug container filesystem
+  try {
+    console.log(`__dirname contents: ${fs.readdirSync(__dirname).join(', ')}`);
+    const excalAppDir = path.join(__dirname, 'excalidraw-app');
+    if (fs.existsSync(excalAppDir)) {
+      console.log(`excalidraw-app contents: ${fs.readdirSync(excalAppDir).join(', ')}`);
+      
+      if (fs.existsSync(BUILD_DIR)) {
+        console.log(`excalidraw-app/build exists! Contents: ${fs.readdirSync(BUILD_DIR).join(', ')}`);
+      } else {
+        console.log(`excalidraw-app/build DOES NOT EXIST!`);
+      }
+    }
+  } catch(e) { console.error('Error logging dirs', e); }
 });

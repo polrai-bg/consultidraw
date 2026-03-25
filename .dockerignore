@@ -14,9 +14,6 @@
 
 # keep (sub)sub directories at the end to exclude from explicit included
 # e.g. ./packages/excalidraw/{dist,node_modules}
-**/build
-**/dist
 **/node_modules
 
-# explicitly allow the final build artifacts for Firebase App Hosting
-!excalidraw-app/build
+# no longer ignoring **/build globally because it was destroying excalidraw-app/build during export
