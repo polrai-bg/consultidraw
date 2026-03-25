@@ -8,17 +8,25 @@ runConfig:
 env:
   - variable: VITE_APP_FIREBASE_CONFIG
     value: '{"apiKey":"AIzaSyCtaZXG229EoC-bdgqb0P1-O6lY4quTrVE","authDomain":"consultidraw.firebaseapp.com","projectId":"consultidraw","storageBucket":"consultidraw.firebasestorage.app","messagingSenderId":"960220741856","appId":"1:960220741856:web:2c2471dd04ba45b818d085","measurementId":"G-17QRKYK7WG"}'
+    availability: ["BUILD", "RUNTIME"]
   - variable: VITE_APP_PIN_HASH
     value: 03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4
+    availability: ["BUILD", "RUNTIME"]
   - variable: VITE_APP_LIBRARY_URL
     value: https://libraries.excalidraw.com
+    availability: ["BUILD", "RUNTIME"]
   - variable: VITE_APP_LIBRARY_BACKEND
     value: https://us-central1-excalidraw-room-persistence.cloudfunctions.net/libraries
+    availability: ["BUILD", "RUNTIME"]
   - variable: VITE_APP_ENABLE_TRACKING
     value: "false"
+    availability: ["BUILD", "RUNTIME"]
   - variable: VITE_APP_DEBUG_ENABLE_TEXT_CONTAINER_BOUNDING_BOX
     value: "false"
+    availability: ["BUILD", "RUNTIME"]
   - variable: VITE_APP_COLLAPSE_OVERLAY
     value: "false"
+    availability: ["BUILD", "RUNTIME"]
   - variable: VITE_APP_ENABLE_ESLINT
     value: "false"
+    availability: ["BUILD", "RUNTIME"]
