@@ -97,7 +97,6 @@ import { AuthScreen } from "./components/AuthScreen";
 import {
   currentUserAtom,
   isAuthenticatedAtom,
-  authErrorAtom,
 } from "./store/drawingState";
 import { onAuthStateChangedListener } from "./data/firebase";
 
@@ -650,7 +649,11 @@ const AuthGate = () => {
     return () => unsubscribe();
   }, [setCurrentUser, setIsAuthenticated]);
 
-  return isAuthenticated || isTestEnv() ? <ExcalidrawWrapper /> : <AuthScreen />;
+  return isAuthenticated || isTestEnv() ? (
+    <ExcalidrawWrapper />
+  ) : (
+    <AuthScreen />
+  );
 };
 
 const ExcalidrawApp = () => {

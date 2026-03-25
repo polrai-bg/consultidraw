@@ -7,9 +7,8 @@ import { isDevEnv } from "@excalidraw/common";
 import type { Theme } from "@excalidraw/element/types";
 
 import { LanguageList } from "../app-language/LanguageList";
-
-import { saveDebugState } from "./DebugCanvas";
 import { logoutUser } from "../data/firebase";
+import { saveDebugState } from "./DebugCanvas";
 
 export const AppMainMenu: React.FC<{
   theme: Theme | "system";
