@@ -19,4 +19,4 @@
 **/node_modules
 
 # explicitly allow the final build artifacts for Firebase App Hosting
-!excalidraw-app/build/**
+!excalidraw-app/build
