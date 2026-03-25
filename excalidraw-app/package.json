@@ -26,6 +26,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "callsites": "4.2.0",
     "firebase": "11.3.1",
     "i18next-browser-languagedetector": "6.1.4",
@@ -47,6 +48,5 @@
     "start:production": "yarn build && yarn start",
     "serve": "npx http-server build -a localhost -p 5001 -o",
     "build:preview": "yarn build && vite preview --port 5000"
-  },
-  "devDependencies": {}
+  }
 }
