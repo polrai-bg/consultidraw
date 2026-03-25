@@ -465,7 +465,7 @@ const LayerUI = ({
       <DefaultSidebar.Trigger
         __fallback
         icon={sidebarRightIcon}
-        title={capitalizeString(t("toolBar.library"))}
+        title="Clients"
         onToggle={(open) => {
           if (open) {
             trackEvent(

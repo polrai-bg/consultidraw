@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+﻿import { initializeApp } from "firebase/app";
 import {
   getFirestore,
   collection,
@@ -21,6 +21,15 @@ import {
   deleteObject,
   listAll,
 } from "firebase/storage";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  type User,
+  type UserCredential,
+} from "firebase/auth";
 
 import type { ExcalidrawElement } from "@excalidraw/element/types";
 import type {
@@ -51,6 +60,7 @@ try {
 let firebaseApp: ReturnType<typeof initializeApp> | null = null;
 let firestoreDb: ReturnType<typeof getFirestore> | null = null;
 let firebaseStorage: ReturnType<typeof getStorage> | null = null;
+let firebaseAuth: ReturnType<typeof getAuth> | null = null;
 
 const _initializeFirebase = () => {
   if (!firebaseApp) {
@@ -71,6 +81,50 @@ const _getStorage = () => {
     firebaseStorage = getStorage(_initializeFirebase());
   }
   return firebaseStorage;
+};
+
+const _getAuth = () => {
+  if (!firebaseAuth) {
+    firebaseAuth = getAuth(_initializeFirebase());
+  }
+  return firebaseAuth;
+};
+
+// -----------------------------------------------------------------------------
+// Authentication
+// -----------------------------------------------------------------------------
+
+export const registerUser = async (
+  email: string,
+  password: string,
+): Promise<UserCredential> => {
+  const auth = _getAuth();
+  return createUserWithEmailAndPassword(auth, email, password);
+};
+
+export const loginUser = async (
+  email: string,
+  password: string,
+): Promise<UserCredential> => {
+  const auth = _getAuth();
+  return signInWithEmailAndPassword(auth, email, password);
+};
+
+export const logoutUser = async (): Promise<void> => {
+  const auth = _getAuth();
+  return signOut(auth);
+};
+
+export const onAuthStateChangedListener = (
+  callback: (user: User | null) => void,
+): (() => void) => {
+  const auth = _getAuth();
+  return onAuthStateChanged(auth, callback);
+};
+
+export const getCurrentUser = (): User | null => {
+  const auth = _getAuth();
+  return auth.currentUser;
 };
 
 // -----------------------------------------------------------------------------

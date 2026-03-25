@@ -9,6 +9,7 @@ import type { Theme } from "@excalidraw/element/types";
 import { LanguageList } from "../app-language/LanguageList";
 
 import { saveDebugState } from "./DebugCanvas";
+import { logoutUser } from "../data/firebase";
 
 export const AppMainMenu: React.FC<{
   theme: Theme | "system";
@@ -54,6 +55,14 @@ export const AppMainMenu: React.FC<{
         <LanguageList style={{ width: "100%" }} />
       </MainMenu.ItemCustom>
       <MainMenu.DefaultItems.ChangeCanvasBackground />
+      <MainMenu.Separator />
+      <MainMenu.Item
+        onSelect={async () => {
+          await logoutUser();
+        }}
+      >
+        Sign out
+      </MainMenu.Item>
     </MainMenu>
   );
 });

@@ -93,6 +93,13 @@ import DebugCanvas, {
 import "./index.scss";
 
 import { AppSidebar } from "./components/AppSidebar";
+import { AuthScreen } from "./components/AuthScreen";
+import {
+  currentUserAtom,
+  isAuthenticatedAtom,
+  authErrorAtom,
+} from "./store/drawingState";
+import { onAuthStateChangedListener } from "./data/firebase";
 
 polyfill();
 
@@ -625,12 +632,33 @@ const ExcalidrawWrapper = () => {
   );
 };
 
+const AuthGate = () => {
+  const [, setCurrentUser] = useAtom(currentUserAtom);
+  const isAuthenticated = useAtomValue(isAuthenticatedAtom);
+  const [, setIsAuthenticated] = useAtom(isAuthenticatedAtom);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChangedListener((user) => {
+      if (user) {
+        setCurrentUser(user);
+        setIsAuthenticated(true);
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+      }
+    });
+    return () => unsubscribe();
+  }, [setCurrentUser, setIsAuthenticated]);
+
+  return isAuthenticated ? <AuthGate /> : <AuthScreen />;
+};
+
 const ExcalidrawApp = () => {
   return (
     <TopErrorBoundary>
       <Provider store={appJotaiStore}>
         <ExcalidrawAPIProvider>
-          <ExcalidrawWrapper />
+          <AuthGate />
         </ExcalidrawAPIProvider>
       </Provider>
     </TopErrorBoundary>

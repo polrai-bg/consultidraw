@@ -1,12 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Clients and drawings - open read/write (protected by PIN gate in app)
+    // Clients and drawings - require authentication
     match /clients/{clientId} {
-      allow read, write: if true;
+      allow read, write: if request.auth.uid != null;
     }
     match /clients/{clientId}/drawings/{drawingId} {
-      allow read, write: if true;
+      allow read, write: if request.auth.uid != null;
     }
   }
 }
