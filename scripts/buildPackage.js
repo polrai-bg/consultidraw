@@ -7,6 +7,14 @@ const { sassPlugin } = require("esbuild-sass-plugin");
 
 const { parseEnvVariables } = require("../packages/excalidraw/env.cjs");
 
+// Ensure env files exist (they may be missing in CI when comparing branches)
+for (const envFile of [".env.development", ".env.production"]) {
+  const envPath = path.resolve(__dirname, "..", envFile);
+  if (!fs.existsSync(envPath)) {
+    fs.writeFileSync(envPath, "");
+  }
+}
+
 const ENV_VARS = {
   development: {
     ...parseEnvVariables(`${__dirname}/../.env.development`),
