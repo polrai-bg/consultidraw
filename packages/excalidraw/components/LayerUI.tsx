@@ -6,7 +6,6 @@ import {
   DEFAULT_SIDEBAR,
   TOOL_TYPE,
   arrayToMap,
-  capitalizeString,
   isShallowEqual,
 } from "@excalidraw/common";
 

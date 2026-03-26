@@ -129,13 +129,15 @@ console.error = (...args) => {
 };
 
 // Mock Firebase auth so ExcalidrawApp renders the canvas (not the login screen) during tests
-vi.mock('./excalidraw-app/data/firebase', async (importOriginal) => {
-  const module = await importOriginal<typeof import('./excalidraw-app/data/firebase')>();
+vi.mock("./excalidraw-app/data/firebase", async (importOriginal) => {
+  const module = await importOriginal<
+    typeof import("./excalidraw-app/data/firebase")
+  >();
   return {
     ...module,
     onAuthStateChangedListener: (callback: (user: any) => void) => {
       // Immediately resolve as authenticated so the app renders for tests
-      callback({ uid: 'test-user', email: 'test@example.com' });
+      callback({ uid: "test-user", email: "test@example.com" });
       return () => {};
     },
   };

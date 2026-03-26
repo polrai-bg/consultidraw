@@ -125,9 +125,7 @@ export const DefaultSidebar = Object.assign(
                 <DefaultSidebarTabTriggersTunnel.Out />
               </Sidebar.TabTriggers>
             </Sidebar.Header>
-            <Sidebar.Tab tab={CLIENTS_TAB}>
-              {children}
-            </Sidebar.Tab>
+            <Sidebar.Tab tab={CLIENTS_TAB}>{children}</Sidebar.Tab>
             <Sidebar.Tab tab={CANVAS_SEARCH_TAB}>
               <SearchMenu />
             </Sidebar.Tab>
