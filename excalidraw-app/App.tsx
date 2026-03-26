@@ -94,10 +94,7 @@ import "./index.scss";
 
 import { AppSidebar } from "./components/AppSidebar";
 import { AuthScreen } from "./components/AuthScreen";
-import {
-  currentUserAtom,
-  isAuthenticatedAtom,
-} from "./store/drawingState";
+import { currentUserAtom, isAuthenticatedAtom } from "./store/drawingState";
 import { onAuthStateChangedListener } from "./data/firebase";
 
 polyfill();

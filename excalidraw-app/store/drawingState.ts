@@ -1,4 +1,4 @@
-﻿import { atom } from "../app-jotai";
+import { atom } from "../app-jotai";
 
 import type { Client, Drawing } from "../data/types";
 import type { User } from "firebase/auth";

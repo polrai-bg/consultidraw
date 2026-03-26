@@ -8,6 +8,7 @@ import type { Theme } from "@excalidraw/element/types";
 
 import { LanguageList } from "../app-language/LanguageList";
 import { logoutUser } from "../data/firebase";
+
 import { saveDebugState } from "./DebugCanvas";
 
 export const AppMainMenu: React.FC<{
