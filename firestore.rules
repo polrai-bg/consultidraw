@@ -8,5 +8,8 @@ service cloud.firestore {
     match /clients/{clientId}/drawings/{drawingId} {
       allow read, write: if request.auth.uid != null;
     }
+    match /clients/{clientId}/folders/{folderId} {
+      allow read, write: if request.auth.uid != null;
+    }
   }
 }

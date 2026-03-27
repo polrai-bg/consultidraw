@@ -96,15 +96,19 @@ export const ClientList: React.FC = () => {
 
   const handleSelectClient = async (clientId: string) => {
     setCurrentClientId(clientId);
-    try {
-      const [drawings, folders] = await Promise.all([
-        getDrawings(clientId),
-        getFolders(clientId),
-      ]);
-      setDrawings(drawings);
-      setFolders(folders);
-    } catch (error) {
-      console.error("Error loading drawings/folders:", error);
+    const [drawingsResult, foldersResult] = await Promise.allSettled([
+      getDrawings(clientId),
+      getFolders(clientId),
+    ]);
+    if (drawingsResult.status === "fulfilled") {
+      setDrawings(drawingsResult.value);
+    } else {
+      console.error("Error loading drawings:", drawingsResult.reason);
+    }
+    if (foldersResult.status === "fulfilled") {
+      setFolders(foldersResult.value);
+    } else {
+      console.error("Error loading folders:", foldersResult.reason);
     }
   };
 

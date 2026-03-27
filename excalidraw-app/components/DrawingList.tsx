@@ -68,15 +68,19 @@ export const DrawingList: React.FC = () => {
     if (!currentClientId) {
       return;
     }
-    try {
-      const [loadedDrawings, loadedFolders] = await Promise.all([
-        getDrawings(currentClientId),
-        getFolders(currentClientId),
-      ]);
-      setDrawings(loadedDrawings);
-      setFolders(loadedFolders);
-    } catch (error) {
-      console.error("Error refreshing drawings/folders:", error);
+    const [drawingsResult, foldersResult] = await Promise.allSettled([
+      getDrawings(currentClientId),
+      getFolders(currentClientId),
+    ]);
+    if (drawingsResult.status === "fulfilled") {
+      setDrawings(drawingsResult.value);
+    } else {
+      console.error("Error loading drawings:", drawingsResult.reason);
+    }
+    if (foldersResult.status === "fulfilled") {
+      setFolders(foldersResult.value);
+    } else {
+      console.error("Error loading folders:", foldersResult.reason);
     }
   }, [currentClientId, setDrawings, setFolders]);
 
