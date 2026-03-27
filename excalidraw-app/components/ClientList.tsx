@@ -12,13 +12,15 @@ import {
   clientsAtom,
   currentClientIdAtom,
   drawingsAtom,
+  foldersAtom,
 } from "../store/drawingState";
-import { getDrawings } from "../data/firebase";
+import { getDrawings, getFolders } from "../data/firebase";
 
 export const ClientList: React.FC = () => {
   const [clients, setClients] = useAtom(clientsAtom);
   const [, setCurrentClientId] = useAtom(currentClientIdAtom);
   const [, setDrawings] = useAtom(drawingsAtom);
+  const [, setFolders] = useAtom(foldersAtom);
   const [newClientName, setNewClientName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,10 +89,14 @@ export const ClientList: React.FC = () => {
   const handleSelectClient = async (clientId: string) => {
     setCurrentClientId(clientId);
     try {
-      const drawings = await getDrawings(clientId);
+      const [drawings, folders] = await Promise.all([
+        getDrawings(clientId),
+        getFolders(clientId),
+      ]);
       setDrawings(drawings);
+      setFolders(folders);
     } catch (error) {
-      console.error("Error loading drawings:", error);
+      console.error("Error loading drawings/folders:", error);
     }
   };
 

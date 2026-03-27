@@ -40,7 +40,7 @@ import type {
 
 import { FILE_CACHE_MAX_AGE_SEC } from "../app_constants";
 
-import type { Client, Drawing } from "./types";
+import type { Client, Drawing, Folder } from "./types";
 
 // private
 // -----------------------------------------------------------------------------
@@ -173,14 +173,14 @@ export const updateClient = async (id: string, name: string): Promise<void> => {
 export const deleteClient = async (id: string): Promise<void> => {
   const db = _getFirestore();
 
-  // Delete all drawings subcollection docs
-  const drawingsSnapshot = await getDocs(
-    collection(db, "clients", id, "drawings"),
-  );
+  // Delete all drawings and folders subcollection docs
+  const [drawingsSnapshot, foldersSnapshot] = await Promise.all([
+    getDocs(collection(db, "clients", id, "drawings")),
+    getDocs(collection(db, "clients", id, "folders")),
+  ]);
   const batch = writeBatch(db);
-  drawingsSnapshot.docs.forEach((drawingDoc) => {
-    batch.delete(drawingDoc.ref);
-  });
+  drawingsSnapshot.docs.forEach((d) => batch.delete(d.ref));
+  foldersSnapshot.docs.forEach((d) => batch.delete(d.ref));
   batch.delete(doc(db, "clients", id));
   await batch.commit();
 
@@ -216,6 +216,7 @@ export const getDrawings = async (clientId: string): Promise<Drawing[]> => {
   return snapshot.docs.map((doc) => ({
     id: doc.id,
     name: doc.data().name,
+    folderId: doc.data().folderId ?? null,
     createdAt: doc.data().createdAt?.toDate() ?? new Date(),
     updatedAt: doc.data().updatedAt?.toDate() ?? new Date(),
   }));
@@ -224,11 +225,13 @@ export const getDrawings = async (clientId: string): Promise<Drawing[]> => {
 export const createDrawing = async (
   clientId: string,
   name: string,
+  folderId: string | null = null,
 ): Promise<Drawing> => {
   const db = _getFirestore();
   const now = Timestamp.now();
   const docRef = await addDoc(collection(db, "clients", clientId, "drawings"), {
     name,
+    folderId,
     createdAt: now,
     updatedAt: now,
   });
@@ -242,6 +245,7 @@ export const createDrawing = async (
   return {
     id: docRef.id,
     name,
+    folderId,
     createdAt: now.toDate(),
     updatedAt: now.toDate(),
   };
@@ -347,6 +351,122 @@ export const saveScene = async (
     updatedAt: Timestamp.now(),
   });
 };
+
+export const moveDrawing = async (
+  clientId: string,
+  drawingId: string,
+  targetFolderId: string | null,
+): Promise<void> => {
+  const db = _getFirestore();
+  await updateDoc(doc(db, "clients", clientId, "drawings", drawingId), {
+    folderId: targetFolderId,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+// -----------------------------------------------------------------------------
+// Folders CRUD
+// -----------------------------------------------------------------------------
+
+export const getFolders = async (clientId: string): Promise<Folder[]> => {
+  const db = _getFirestore();
+  const q = query(
+    collection(db, "clients", clientId, "folders"),
+    orderBy("name", "asc"),
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({
+    id: d.id,
+    name: d.data().name,
+    parentId: d.data().parentId ?? null,
+    createdAt: d.data().createdAt?.toDate() ?? new Date(),
+    updatedAt: d.data().updatedAt?.toDate() ?? new Date(),
+  }));
+};
+
+export const createFolder = async (
+  clientId: string,
+  name: string,
+  parentId: string | null = null,
+): Promise<Folder> => {
+  const db = _getFirestore();
+  const now = Timestamp.now();
+  const docRef = await addDoc(
+    collection(db, "clients", clientId, "folders"),
+    { name, parentId, createdAt: now, updatedAt: now },
+  );
+  return {
+    id: docRef.id,
+    name,
+    parentId,
+    createdAt: now.toDate(),
+    updatedAt: now.toDate(),
+  };
+};
+
+export const updateFolder = async (
+  clientId: string,
+  folderId: string,
+  name: string,
+): Promise<void> => {
+  const db = _getFirestore();
+  await updateDoc(doc(db, "clients", clientId, "folders", folderId), {
+    name,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+export const moveFolder = async (
+  clientId: string,
+  folderId: string,
+  newParentId: string | null,
+): Promise<void> => {
+  const db = _getFirestore();
+  await updateDoc(doc(db, "clients", clientId, "folders", folderId), {
+    parentId: newParentId,
+    updatedAt: Timestamp.now(),
+  });
+};
+
+/**
+ * Deletes a folder. Drawings and sub-folders inside it are moved to the
+ * deleted folder's parent (so nothing is silently lost).
+ */
+export const deleteFolder = async (
+  clientId: string,
+  folderId: string,
+  parentId: string | null,
+): Promise<void> => {
+  const db = _getFirestore();
+
+  // Re-parent direct children (sub-folders)
+  const subFoldersSnap = await getDocs(
+    collection(db, "clients", clientId, "folders"),
+  );
+  const batch = writeBatch(db);
+  subFoldersSnap.docs.forEach((d) => {
+    if (d.data().parentId === folderId) {
+      batch.update(d.ref, { parentId, updatedAt: Timestamp.now() });
+    }
+  });
+
+  // Re-parent drawings inside this folder
+  const drawingsSnap = await getDocs(
+    collection(db, "clients", clientId, "drawings"),
+  );
+  drawingsSnap.docs.forEach((d) => {
+    if (d.data().folderId === folderId) {
+      batch.update(d.ref, { folderId: parentId, updatedAt: Timestamp.now() });
+    }
+  });
+
+  batch.delete(doc(db, "clients", clientId, "folders", folderId));
+  await batch.commit();
+};
+
+// -----------------------------------------------------------------------------
+// Scene persistence
+// -----------------------------------------------------------------------------
 
 export const loadScene = async (
   clientId: string,

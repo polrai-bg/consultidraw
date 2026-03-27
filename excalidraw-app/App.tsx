@@ -207,15 +207,25 @@ const ExcalidrawWrapper = () => {
   const currentDrawingId = useAtomValue(currentDrawingIdAtom);
   const [, setIsSaving] = useAtom(isSavingAtom);
 
+  // Refs so the debounced callback always reads the LATEST ids, not a stale closure.
+  // Without this, loading drawing B then leaving for 5s would save B's content to A's path.
+  const currentClientIdRef = useRef(currentClientId);
+  const currentDrawingIdRef = useRef(currentDrawingId);
+  currentClientIdRef.current = currentClientId;
+  currentDrawingIdRef.current = currentDrawingId;
+
   const debouncedFirebaseSave = useRef(
     debounce(
       async (
-        clientId: string,
-        drawingId: string,
         elements: readonly OrderedExcalidrawElement[],
         appState: AppState,
         files: BinaryFiles,
       ) => {
+        const clientId = currentClientIdRef.current;
+        const drawingId = currentDrawingIdRef.current;
+        if (!clientId || !drawingId) {
+          return;
+        }
         setIsSaving(true);
         try {
           await saveScene(clientId, drawingId, elements, appState, files);
@@ -492,15 +502,10 @@ const ExcalidrawWrapper = () => {
       });
     }
 
-    // Auto-save to Firebase if a drawing is currently open
-    if (currentClientId && currentDrawingId) {
-      debouncedFirebaseSave(
-        currentClientId,
-        currentDrawingId,
-        elements,
-        appState,
-        files,
-      );
+    // Auto-save to Firebase if a drawing is currently open.
+    // IDs are read from refs inside the callback to avoid stale-closure overwrites.
+    if (currentClientIdRef.current && currentDrawingIdRef.current) {
+      debouncedFirebaseSave(elements, appState, files);
     }
 
     // Render the debug scene if the debug canvas is available

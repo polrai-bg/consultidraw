@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 
 import { useExcalidrawAPI } from "@excalidraw/excalidraw";
 
@@ -18,17 +18,26 @@ import {
   createDrawing,
   deleteDrawing,
   updateDrawingMeta,
+  moveDrawing,
   loadScene,
   saveScene,
+  getFolders,
+  createFolder,
+  updateFolder,
+  deleteFolder,
+  moveFolder,
 } from "../data/firebase";
 import {
   clientsAtom,
   currentClientIdAtom,
   currentDrawingIdAtom,
   drawingsAtom,
+  foldersAtom,
   isSavingAtom,
   isLoadingAtom,
 } from "../store/drawingState";
+
+import { FolderTree } from "./FolderTree";
 
 export const DrawingList: React.FC = () => {
   const excalidrawAPI = useExcalidrawAPI();
@@ -36,26 +45,41 @@ export const DrawingList: React.FC = () => {
   const [currentClientId, setCurrentClientId] = useAtom(currentClientIdAtom);
   const [currentDrawingId, setCurrentDrawingId] = useAtom(currentDrawingIdAtom);
   const [drawings, setDrawings] = useAtom(drawingsAtom);
+  const [folders, setFolders] = useAtom(foldersAtom);
   const [isSaving] = useAtom(isSavingAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
-  const [newDrawingName, setNewDrawingName] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const currentClient = clients.find((c) => c.id === currentClientId);
 
-  const refreshDrawings = useCallback(async () => {
+  // ---------------------------------------------------------------------------
+  // Data refresh
+  // ---------------------------------------------------------------------------
+
+  const refreshAll = useCallback(async () => {
     if (!currentClientId) {
       return;
     }
     try {
-      const loaded = await getDrawings(currentClientId);
-      setDrawings(loaded);
+      const [loadedDrawings, loadedFolders] = await Promise.all([
+        getDrawings(currentClientId),
+        getFolders(currentClientId),
+      ]);
+      setDrawings(loadedDrawings);
+      setFolders(loadedFolders);
     } catch (error) {
-      console.error("Error loading drawings:", error);
+      console.error("Error refreshing drawings/folders:", error);
     }
-  }, [currentClientId, setDrawings]);
+  }, [currentClientId, setDrawings, setFolders]);
+
+  // Load on mount if client is already set (e.g. after returning to sidebar)
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  // ---------------------------------------------------------------------------
+  // Save helper
+  // ---------------------------------------------------------------------------
 
   const saveCurrentDrawing = useCallback(
     async (api: ExcalidrawImperativeAPI) => {
@@ -77,90 +101,59 @@ export const DrawingList: React.FC = () => {
     [currentClientId, currentDrawingId],
   );
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newDrawingName.trim() || !currentClientId) {
-      return;
-    }
-    setIsCreating(true);
-    try {
-      // Save current drawing first
-      if (excalidrawAPI && currentDrawingId) {
-        await saveCurrentDrawing(excalidrawAPI);
-      }
-
-      const drawing = await createDrawing(
-        currentClientId,
-        newDrawingName.trim(),
-      );
-      setNewDrawingName("");
-      setCurrentDrawingId(drawing.id);
-
-      // Reset the canvas for the new drawing
-      if (excalidrawAPI) {
-        excalidrawAPI.resetScene();
-        excalidrawAPI.updateScene({
-          appState: { name: drawing.name },
-          captureUpdate: CaptureUpdateAction.NEVER,
-        });
-      }
-
-      await refreshDrawings();
-    } catch (error) {
-      console.error("Error creating drawing:", error);
-    }
-    setIsCreating(false);
-  };
-
-  const handleDelete = async (drawingId: string, name: string) => {
-    if (!currentClientId) {
-      return;
-    }
-    if (!window.confirm(`Delete drawing "${name}"?`)) {
-      return;
-    }
-    try {
-      await deleteDrawing(currentClientId, drawingId);
-      if (currentDrawingId === drawingId) {
-        setCurrentDrawingId(null);
-        if (excalidrawAPI) {
-          excalidrawAPI.resetScene();
-        }
-      }
-      await refreshDrawings();
-    } catch (error) {
-      console.error("Error deleting drawing:", error);
-    }
-  };
-
-  const handleRename = async (drawingId: string) => {
-    if (!editName.trim() || !currentClientId) {
-      setEditingId(null);
-      return;
-    }
-    try {
-      await updateDrawingMeta(currentClientId, drawingId, editName.trim());
-      setEditingId(null);
-      await refreshDrawings();
-    } catch (error) {
-      console.error("Error renaming drawing:", error);
-    }
-  };
+  // ---------------------------------------------------------------------------
+  // Select / load a drawing
+  // ---------------------------------------------------------------------------
 
   const handleSelectDrawing = async (drawingId: string) => {
-    if (!currentClientId || !excalidrawAPI || drawingId === currentDrawingId) {
+    // Prevent re-entering while already loading or selecting the same drawing
+    if (
+      !currentClientId ||
+      !excalidrawAPI ||
+      drawingId === currentDrawingId ||
+      isLoading
+    ) {
       return;
     }
 
     setIsLoading(true);
+    setLoadError(null);
     try {
-      // Save current drawing first
+      // Save current drawing first (with a tight timeout so it never blocks the load)
       if (currentDrawingId) {
-        await saveCurrentDrawing(excalidrawAPI);
+        await Promise.race([
+          saveCurrentDrawing(excalidrawAPI),
+          new Promise<void>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Save timed out")),
+              8_000,
+            ),
+          ),
+        ]).catch((err) => {
+          // Non-fatal: log and continue to load the new drawing
+          console.warn(
+            "Could not save current drawing before switching:",
+            err,
+          );
+        });
       }
 
-      // Load the selected drawing
-      const scene = await loadScene(currentClientId, drawingId);
+      // Load the selected drawing with a 20-second timeout
+      const scene = await Promise.race([
+        loadScene(currentClientId, drawingId),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Loading timed out. Check your network or Firebase configuration.",
+                ),
+              ),
+            20_000,
+          ),
+        ),
+      ]);
+
       setCurrentDrawingId(drawingId);
 
       if (scene) {
@@ -174,7 +167,8 @@ export const DrawingList: React.FC = () => {
           appState: {
             ...appState,
             name:
-              drawings.find((d) => d.id === drawingId)?.name || appState.name,
+              drawings.find((d) => d.id === drawingId)?.name ||
+              appState.name,
           },
           captureUpdate: CaptureUpdateAction.IMMEDIATELY,
         });
@@ -194,25 +188,236 @@ export const DrawingList: React.FC = () => {
         }
       }
     } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load drawing.";
       console.error("Error loading drawing:", error);
+      setLoadError(message);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
+
+  // ---------------------------------------------------------------------------
+  // Create drawing
+  // ---------------------------------------------------------------------------
+
+  const handleCreateDrawing = useCallback(
+    async (name: string, folderId: string | null) => {
+      if (!currentClientId) {
+        return;
+      }
+      try {
+        if (excalidrawAPI && currentDrawingId) {
+          await saveCurrentDrawing(excalidrawAPI);
+        }
+
+        const drawing = await createDrawing(currentClientId, name, folderId);
+        setCurrentDrawingId(drawing.id);
+
+        if (excalidrawAPI) {
+          excalidrawAPI.resetScene();
+          excalidrawAPI.updateScene({
+            appState: { name: drawing.name },
+            captureUpdate: CaptureUpdateAction.NEVER,
+          });
+        }
+
+        await refreshAll();
+      } catch (error) {
+        console.error("Error creating drawing:", error);
+      }
+    },
+    [
+      currentClientId,
+      currentDrawingId,
+      excalidrawAPI,
+      saveCurrentDrawing,
+      setCurrentDrawingId,
+      refreshAll,
+    ],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Rename drawing
+  // ---------------------------------------------------------------------------
+
+  const handleRenameDrawing = useCallback(
+    async (drawingId: string, name: string) => {
+      if (!currentClientId) {
+        return;
+      }
+      try {
+        await updateDrawingMeta(currentClientId, drawingId, name);
+        await refreshAll();
+      } catch (error) {
+        console.error("Error renaming drawing:", error);
+      }
+    },
+    [currentClientId, refreshAll],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Delete drawing
+  // ---------------------------------------------------------------------------
+
+  const handleDeleteDrawing = useCallback(
+    async (drawingId: string, name: string) => {
+      if (!currentClientId) {
+        return;
+      }
+      if (!window.confirm(`Delete drawing "${name}"?`)) {
+        return;
+      }
+      try {
+        await deleteDrawing(currentClientId, drawingId);
+        if (currentDrawingId === drawingId) {
+          setCurrentDrawingId(null);
+          if (excalidrawAPI) {
+            excalidrawAPI.resetScene();
+          }
+        }
+        await refreshAll();
+      } catch (error) {
+        console.error("Error deleting drawing:", error);
+      }
+    },
+    [
+      currentClientId,
+      currentDrawingId,
+      excalidrawAPI,
+      setCurrentDrawingId,
+      refreshAll,
+    ],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Move drawing
+  // ---------------------------------------------------------------------------
+
+  const handleMoveDrawing = useCallback(
+    async (drawingId: string, targetFolderId: string | null) => {
+      if (!currentClientId) {
+        return;
+      }
+      try {
+        await moveDrawing(currentClientId, drawingId, targetFolderId);
+        await refreshAll();
+      } catch (error) {
+        console.error("Error moving drawing:", error);
+      }
+    },
+    [currentClientId, refreshAll],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Create folder
+  // ---------------------------------------------------------------------------
+
+  const handleCreateFolder = useCallback(
+    async (name: string, parentId: string | null) => {
+      if (!currentClientId) {
+        return;
+      }
+      try {
+        await createFolder(currentClientId, name, parentId);
+        await refreshAll();
+      } catch (error) {
+        console.error("Error creating folder:", error);
+      }
+    },
+    [currentClientId, refreshAll],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Rename folder
+  // ---------------------------------------------------------------------------
+
+  const handleRenameFolder = useCallback(
+    async (folderId: string, name: string) => {
+      if (!currentClientId) {
+        return;
+      }
+      try {
+        await updateFolder(currentClientId, folderId, name);
+        await refreshAll();
+      } catch (error) {
+        console.error("Error renaming folder:", error);
+      }
+    },
+    [currentClientId, refreshAll],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Delete folder
+  // ---------------------------------------------------------------------------
+
+  const handleDeleteFolder = useCallback(
+    async (folderId: string, name: string) => {
+      if (!currentClientId) {
+        return;
+      }
+      if (
+        !window.confirm(
+          `Delete folder "${name}"? Its contents will be moved to the parent folder.`,
+        )
+      ) {
+        return;
+      }
+      try {
+        const folder = folders.find((f) => f.id === folderId);
+        await deleteFolder(currentClientId, folderId, folder?.parentId ?? null);
+        await refreshAll();
+      } catch (error) {
+        console.error("Error deleting folder:", error);
+      }
+    },
+    [currentClientId, folders, refreshAll],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Move folder
+  // ---------------------------------------------------------------------------
+
+  const handleMoveFolder = useCallback(
+    async (folderId: string, targetParentId: string | null) => {
+      if (!currentClientId) {
+        return;
+      }
+      try {
+        await moveFolder(currentClientId, folderId, targetParentId);
+        await refreshAll();
+      } catch (error) {
+        console.error("Error moving folder:", error);
+      }
+    },
+    [currentClientId, refreshAll],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Back
+  // ---------------------------------------------------------------------------
 
   const handleBack = () => {
     setCurrentClientId(null);
     setCurrentDrawingId(null);
     setDrawings([]);
+    setFolders([]);
   };
 
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+
   return (
-    <div style={{ padding: "0.5rem" }}>
+    <div style={{ padding: "0.5rem", display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* Header */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: "0.5rem",
-          marginBottom: "0.75rem",
+          marginBottom: "0.5rem",
+          flexShrink: 0,
         }}
       >
         <button
@@ -234,6 +439,10 @@ export const DrawingList: React.FC = () => {
             fontWeight: 600,
             fontSize: "0.9rem",
             color: "var(--color-on-surface, #333)",
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
         >
           {currentClient?.name || "Drawings"}
@@ -243,178 +452,82 @@ export const DrawingList: React.FC = () => {
             style={{
               fontSize: "0.7rem",
               color: "#6965db",
-              marginLeft: "auto",
+              flexShrink: 0,
             }}
           >
-            {isLoading ? "Loading..." : "Saving..."}
+            {isLoading ? "Loading…" : "Saving…"}
           </span>
         )}
       </div>
 
-      <form
-        onSubmit={handleCreate}
-        style={{ display: "flex", gap: "0.25rem", marginBottom: "0.75rem" }}
-      >
-        <input
-          type="text"
-          value={newDrawingName}
-          onChange={(e) => setNewDrawingName(e.target.value)}
-          placeholder="New drawing name..."
-          disabled={isCreating}
-          style={{
-            flex: 1,
-            padding: "0.4rem 0.5rem",
-            fontSize: "0.8rem",
-            border: "1px solid var(--color-border-outline, #ddd)",
-            borderRadius: "4px",
-            background: "var(--color-surface-high, #fff)",
-            color: "var(--color-on-surface, #333)",
-          }}
-        />
-        <button
-          type="submit"
-          disabled={isCreating || !newDrawingName.trim()}
-          style={{
-            padding: "0.4rem 0.6rem",
-            fontSize: "0.8rem",
-            background: "#6965db",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            opacity: isCreating || !newDrawingName.trim() ? 0.5 : 1,
-          }}
-        >
-          +
-        </button>
-      </form>
-
-      {drawings.length === 0 && (
+      {/* Error banner */}
+      {loadError && (
         <div
           style={{
-            textAlign: "center",
-            color: "var(--color-on-surface, #999)",
-            fontSize: "0.8rem",
-            padding: "1rem 0",
+            padding: "0.4rem 0.5rem",
+            marginBottom: "0.5rem",
+            background: "#fff5f5",
+            border: "1px solid #feb2b2",
+            borderRadius: "4px",
+            fontSize: "0.75rem",
+            color: "#c53030",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "0.5rem",
+            flexShrink: 0,
           }}
         >
-          No drawings yet. Create one above.
+          <span>{loadError}</span>
+          <button
+            onClick={() => setLoadError(null)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
+              fontSize: "0.8rem",
+              color: "#c53030",
+              flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        {drawings.map((drawing) => (
+      {/* Tree */}
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        {drawings.length === 0 && folders.length === 0 ? (
           <div
-            key={drawing.id}
             style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "0.5rem",
-              borderRadius: "6px",
-              cursor: "pointer",
-              background:
-                drawing.id === currentDrawingId
-                  ? "var(--color-primary-light, #e8e7fc)"
-                  : "var(--color-surface-high, transparent)",
-              fontSize: "0.85rem",
-              borderLeft:
-                drawing.id === currentDrawingId
-                  ? "3px solid #6965db"
-                  : "3px solid transparent",
-            }}
-            onClick={() => handleSelectDrawing(drawing.id)}
-            onMouseEnter={(e) => {
-              if (drawing.id !== currentDrawingId) {
-                e.currentTarget.style.background =
-                  "var(--color-surface-lowest, #f0f0f0)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (drawing.id !== currentDrawingId) {
-                e.currentTarget.style.background =
-                  "var(--color-surface-high, transparent)";
-              }
+              textAlign: "center",
+              color: "var(--color-on-surface, #999)",
+              fontSize: "0.8rem",
+              padding: "1.5rem 0",
             }}
           >
-            {editingId === drawing.id ? (
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onBlur={() => handleRename(drawing.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleRename(drawing.id);
-                  }
-                  if (e.key === "Escape") {
-                    setEditingId(null);
-                  }
-                }}
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  flex: 1,
-                  padding: "0.2rem 0.4rem",
-                  fontSize: "0.85rem",
-                  border: "1px solid #6965db",
-                  borderRadius: "4px",
-                }}
-              />
-            ) : (
-              <>
-                <div style={{ flex: 1 }}>
-                  <div>{drawing.name}</div>
-                  <div
-                    style={{
-                      fontSize: "0.7rem",
-                      color: "var(--color-on-surface, #999)",
-                      marginTop: "2px",
-                    }}
-                  >
-                    {drawing.updatedAt.toLocaleDateString()}
-                  </div>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingId(drawing.id);
-                    setEditName(drawing.name);
-                  }}
-                  title="Rename"
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "0.15rem 0.3rem",
-                    fontSize: "0.75rem",
-                    opacity: 0.5,
-                    color: "var(--color-on-surface, #333)",
-                  }}
-                >
-                  ✎
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(drawing.id, drawing.name);
-                  }}
-                  title="Delete"
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "0.15rem 0.3rem",
-                    fontSize: "0.75rem",
-                    opacity: 0.5,
-                    color: "#e53e3e",
-                  }}
-                >
-                  ✕
-                </button>
-              </>
-            )}
+            No drawings yet.
+            <br />
+            Use the buttons below to get started.
           </div>
-        ))}
+        ) : null}
+
+        <FolderTree
+          drawings={drawings}
+          folders={folders}
+          currentDrawingId={currentDrawingId}
+          isLoading={isLoading}
+          onSelectDrawing={handleSelectDrawing}
+          onCreateDrawing={handleCreateDrawing}
+          onCreateFolder={handleCreateFolder}
+          onRenameDrawing={handleRenameDrawing}
+          onRenameFolder={handleRenameFolder}
+          onDeleteDrawing={handleDeleteDrawing}
+          onDeleteFolder={handleDeleteFolder}
+          onMoveDrawing={handleMoveDrawing}
+          onMoveFolder={handleMoveFolder}
+        />
       </div>
     </div>
   );
