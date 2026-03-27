@@ -65,14 +65,23 @@ const InlineCreate: React.FC<{
 }> = ({ placeholder, onSubmit, onCancel, depth }) => {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const didSubmitRef = useRef(false);
 
   React.useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  const handleSubmit = (name: string) => {
+    if (didSubmitRef.current) {
+      return;
+    }
+    didSubmitRef.current = true;
+    onSubmit(name);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && value.trim()) {
-      onSubmit(value.trim());
+      handleSubmit(value.trim());
     } else if (e.key === "Escape") {
       onCancel();
     }
@@ -95,7 +104,13 @@ const InlineCreate: React.FC<{
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
-        onBlur={() => onCancel()}
+        onBlur={() => {
+          if (value.trim()) {
+            handleSubmit(value.trim());
+          } else {
+            onCancel();
+          }
+        }}
         placeholder={placeholder}
         style={{
           flex: 1,
