@@ -35,6 +35,7 @@ import {
   foldersAtom,
   isSavingAtom,
   isLoadingAtom,
+  isSidebarPinnedAtom,
 } from "../store/drawingState";
 
 import { FolderTree } from "./FolderTree";
@@ -48,7 +49,14 @@ export const DrawingList: React.FC = () => {
   const [folders, setFolders] = useAtom(foldersAtom);
   const [isSaving] = useAtom(isSavingAtom);
   const [isLoading, setIsLoading] = useAtom(isLoadingAtom);
+  const [isSidebarPinned, setIsSidebarPinned] = useAtom(isSidebarPinnedAtom);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const handleTogglePin = useCallback(() => {
+    const next = !isSidebarPinned;
+    setIsSidebarPinned(next);
+    localStorage.setItem("consulti-sidebar-pinned", String(next));
+  }, [isSidebarPinned, setIsSidebarPinned]);
 
   const currentClient = clients.find((c) => c.id === currentClientId);
 
@@ -458,6 +466,27 @@ export const DrawingList: React.FC = () => {
             {isLoading ? "Loading…" : "Saving…"}
           </span>
         )}
+        <button
+          onClick={handleTogglePin}
+          title={isSidebarPinned ? "Unpin panel" : "Pin panel open"}
+          style={{
+            background: isSidebarPinned
+              ? "var(--color-primary-light, #e8e7fc)"
+              : "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0.2rem 0.3rem",
+            fontSize: "0.8rem",
+            borderRadius: "4px",
+            color: isSidebarPinned
+              ? "#6965db"
+              : "var(--color-on-surface, #999)",
+            flexShrink: 0,
+            lineHeight: 1,
+          }}
+        >
+          📌
+        </button>
       </div>
 
       {/* Error banner */}

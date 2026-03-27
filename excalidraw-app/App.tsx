@@ -69,6 +69,7 @@ import {
   currentClientIdAtom,
   currentDrawingIdAtom,
   isSavingAtom,
+  isSidebarPinnedAtom,
 } from "./store/drawingState";
 
 import { updateStaleImageStatuses } from "./data/FileManager";
@@ -92,7 +93,7 @@ import DebugCanvas, {
 
 import "./index.scss";
 
-import { AppSidebar } from "./components/AppSidebar";
+import { AppSidebar, PinnedPanel } from "./components/AppSidebar";
 import { AuthScreen } from "./components/AuthScreen";
 import {
   currentUserAtom,
@@ -206,6 +207,7 @@ const ExcalidrawWrapper = () => {
   const currentClientId = useAtomValue(currentClientIdAtom);
   const currentDrawingId = useAtomValue(currentDrawingIdAtom);
   const [, setIsSaving] = useAtom(isSavingAtom);
+  const isSidebarPinned = useAtomValue(isSidebarPinnedAtom);
 
   // Refs so the debounced callback always reads the LATEST ids, not a stale closure.
   // Without this, loading drawing B then leaving for 5s would save B's content to A's path.
@@ -551,87 +553,93 @@ const ExcalidrawWrapper = () => {
   }
 
   return (
-    <div style={{ height: "100%" }} className={clsx("excalidraw-app")}>
-      <Excalidraw
-        onChange={onChange}
-        initialData={initialStatePromiseRef.current.promise}
-        UIOptions={{
-          canvasActions: {
-            toggleTheme: true,
-          },
-        }}
-        langCode={langCode}
-        renderCustomStats={renderCustomStats}
-        detectScroll={false}
-        handleKeyboardGlobally={true}
-        autoFocus={true}
-        theme={editorTheme}
-        onLinkOpen={(element, event) => {
-          if (element.link && isElementLink(element.link)) {
-            event.preventDefault();
-            excalidrawAPI?.scrollToContent(element.link, { animate: true });
-          }
-        }}
-      >
-        <AppMainMenu
-          theme={appTheme}
-          setTheme={(theme) => setAppTheme(theme)}
-          refresh={() => forceRefresh((prev) => !prev)}
-        />
-        <AppWelcomeScreen />
-        <OverwriteConfirmDialog>
-          <OverwriteConfirmDialog.Actions.ExportToImage />
-          <OverwriteConfirmDialog.Actions.SaveToDisk />
-        </OverwriteConfirmDialog>
-        <AppFooter onChange={() => excalidrawAPI?.refresh()} />
-
-        {localStorageQuotaExceeded && (
-          <div className="alert alert--danger">
-            {t("alerts.localStorageQuotaExceeded")}
-          </div>
-        )}
-
-        <AppSidebar />
-
-        {errorMessage && (
-          <ErrorDialog onClose={() => setErrorMessage("")}>
-            {errorMessage}
-          </ErrorDialog>
-        )}
-
-        <CommandPalette
-          customCommandPaletteItems={[
-            {
-              ...CommandPalette.defaultItems.toggleTheme,
-              perform: () => {
-                setAppTheme(
-                  editorTheme === THEME.DARK ? THEME.LIGHT : THEME.DARK,
-                );
-              },
+    <div
+      style={{ height: "100%", display: "flex" }}
+      className={clsx("excalidraw-app")}
+    >
+      <div style={{ flex: 1, minWidth: 0, height: "100%" }}>
+        <Excalidraw
+          onChange={onChange}
+          initialData={initialStatePromiseRef.current.promise}
+          UIOptions={{
+            canvasActions: {
+              toggleTheme: true,
             },
-            {
-              label: t("labels.installPWA"),
-              category: DEFAULT_CATEGORIES.app,
-              predicate: () => !!pwaEvent,
-              perform: () => {
-                if (pwaEvent) {
-                  pwaEvent.prompt();
-                  pwaEvent.userChoice.then(() => {
-                    pwaEvent = null;
-                  });
-                }
-              },
-            },
-          ]}
-        />
-        {isVisualDebuggerEnabled() && excalidrawAPI && (
-          <DebugCanvas
-            appState={excalidrawAPI.getAppState()}
-            scale={window.devicePixelRatio}
-            ref={debugCanvasRef}
+          }}
+          langCode={langCode}
+          renderCustomStats={renderCustomStats}
+          detectScroll={false}
+          handleKeyboardGlobally={true}
+          autoFocus={true}
+          theme={editorTheme}
+          onLinkOpen={(element, event) => {
+            if (element.link && isElementLink(element.link)) {
+              event.preventDefault();
+              excalidrawAPI?.scrollToContent(element.link, { animate: true });
+            }
+          }}
+        >
+          <AppMainMenu
+            theme={appTheme}
+            setTheme={(theme) => setAppTheme(theme)}
+            refresh={() => forceRefresh((prev) => !prev)}
           />
-        )}
-      </Excalidraw>
+          <AppWelcomeScreen />
+          <OverwriteConfirmDialog>
+            <OverwriteConfirmDialog.Actions.ExportToImage />
+            <OverwriteConfirmDialog.Actions.SaveToDisk />
+          </OverwriteConfirmDialog>
+          <AppFooter onChange={() => excalidrawAPI?.refresh()} />
+
+          {localStorageQuotaExceeded && (
+            <div className="alert alert--danger">
+              {t("alerts.localStorageQuotaExceeded")}
+            </div>
+          )}
+
+          {!isSidebarPinned && <AppSidebar />}
+
+          {errorMessage && (
+            <ErrorDialog onClose={() => setErrorMessage("")}>
+              {errorMessage}
+            </ErrorDialog>
+          )}
+
+          <CommandPalette
+            customCommandPaletteItems={[
+              {
+                ...CommandPalette.defaultItems.toggleTheme,
+                perform: () => {
+                  setAppTheme(
+                    editorTheme === THEME.DARK ? THEME.LIGHT : THEME.DARK,
+                  );
+                },
+              },
+              {
+                label: t("labels.installPWA"),
+                category: DEFAULT_CATEGORIES.app,
+                predicate: () => !!pwaEvent,
+                perform: () => {
+                  if (pwaEvent) {
+                    pwaEvent.prompt();
+                    pwaEvent.userChoice.then(() => {
+                      pwaEvent = null;
+                    });
+                  }
+                },
+              },
+            ]}
+          />
+          {isVisualDebuggerEnabled() && excalidrawAPI && (
+            <DebugCanvas
+              appState={excalidrawAPI.getAppState()}
+              scale={window.devicePixelRatio}
+              ref={debugCanvasRef}
+            />
+          )}
+        </Excalidraw>
+      </div>
+      {isSidebarPinned && <PinnedPanel />}
     </div>
   );
 };

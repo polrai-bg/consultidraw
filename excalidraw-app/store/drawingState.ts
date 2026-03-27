@@ -16,3 +16,7 @@ export const drawingsAtom = atom<Drawing[]>([]);
 export const foldersAtom = atom<Folder[]>([]);
 export const isSavingAtom = atom<boolean>(false);
 export const isLoadingAtom = atom<boolean>(false);
+export const isSidebarPinnedAtom = atom<boolean>(
+  typeof window !== "undefined" &&
+    localStorage.getItem("consulti-sidebar-pinned") === "true",
+);

@@ -13,6 +13,7 @@ import {
   currentClientIdAtom,
   drawingsAtom,
   foldersAtom,
+  isSidebarPinnedAtom,
 } from "../store/drawingState";
 import { getDrawings, getFolders } from "../data/firebase";
 
@@ -21,11 +22,18 @@ export const ClientList: React.FC = () => {
   const [, setCurrentClientId] = useAtom(currentClientIdAtom);
   const [, setDrawings] = useAtom(drawingsAtom);
   const [, setFolders] = useAtom(foldersAtom);
+  const [isSidebarPinned, setIsSidebarPinned] = useAtom(isSidebarPinnedAtom);
   const [newClientName, setNewClientName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const handleTogglePin = useCallback(() => {
+    const next = !isSidebarPinned;
+    setIsSidebarPinned(next);
+    localStorage.setItem("consulti-sidebar-pinned", String(next));
+  }, [isSidebarPinned, setIsSidebarPinned]);
 
   const loadClients = useCallback(async () => {
     try {
@@ -104,13 +112,41 @@ export const ClientList: React.FC = () => {
     <div style={{ padding: "0.5rem" }}>
       <div
         style={{
-          fontWeight: 600,
-          fontSize: "0.9rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           marginBottom: "0.75rem",
-          color: "var(--color-on-surface, #333)",
         }}
       >
-        Clients
+        <span
+          style={{
+            fontWeight: 600,
+            fontSize: "0.9rem",
+            color: "var(--color-on-surface, #333)",
+          }}
+        >
+          Clients
+        </span>
+        <button
+          onClick={handleTogglePin}
+          title={isSidebarPinned ? "Unpin panel" : "Pin panel open"}
+          style={{
+            background: isSidebarPinned
+              ? "var(--color-primary-light, #e8e7fc)"
+              : "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0.2rem 0.3rem",
+            fontSize: "0.8rem",
+            borderRadius: "4px",
+            color: isSidebarPinned
+              ? "#6965db"
+              : "var(--color-on-surface, #999)",
+            lineHeight: 1,
+          }}
+        >
+          📌
+        </button>
       </div>
 
       <form
