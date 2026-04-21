@@ -21,7 +21,6 @@ import type {
   UseDataConnectMutationResult,
   useDataConnectMutationOptions,
 } from "@tanstack-query-firebase/react/data-connect";
-import type { UseQueryResult, UseMutationResult } from "@tanstack/react-query";
 import type { DataConnect } from "firebase/data-connect";
 import type { FirebaseError } from "firebase/app";
 
