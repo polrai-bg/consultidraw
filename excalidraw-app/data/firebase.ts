@@ -1,4 +1,4 @@
-﻿import { initializeApp } from "firebase/app";
+import { initializeApp } from "firebase/app";
 import {
   getFirestore,
   collection,
@@ -391,10 +391,12 @@ export const createFolder = async (
 ): Promise<Folder> => {
   const db = _getFirestore();
   const now = Timestamp.now();
-  const docRef = await addDoc(
-    collection(db, "clients", clientId, "folders"),
-    { name, parentId, createdAt: now, updatedAt: now },
-  );
+  const docRef = await addDoc(collection(db, "clients", clientId, "folders"), {
+    name,
+    parentId,
+    createdAt: now,
+    updatedAt: now,
+  });
   return {
     id: docRef.id,
     name,

@@ -69,7 +69,6 @@ import {
   currentClientIdAtom,
   currentDrawingIdAtom,
   isSavingAtom,
-  isSidebarPinnedAtom,
 } from "./store/drawingState";
 
 import { updateStaleImageStatuses } from "./data/FileManager";
@@ -93,12 +92,8 @@ import DebugCanvas, {
 
 import "./index.scss";
 
-import { AppSidebar, PinnedPanel } from "./components/AppSidebar";
 import { AuthScreen } from "./components/AuthScreen";
-import {
-  currentUserAtom,
-  isAuthenticatedAtom,
-} from "./store/drawingState";
+import { currentUserAtom, isAuthenticatedAtom } from "./store/drawingState";
 import { onAuthStateChangedListener } from "./data/firebase";
 
 polyfill();
@@ -207,7 +202,6 @@ const ExcalidrawWrapper = () => {
   const currentClientId = useAtomValue(currentClientIdAtom);
   const currentDrawingId = useAtomValue(currentDrawingIdAtom);
   const [, setIsSaving] = useAtom(isSavingAtom);
-  const isSidebarPinned = useAtomValue(isSidebarPinnedAtom);
 
   // Refs so the debounced callback always reads the LATEST ids, not a stale closure.
   // Without this, loading drawing B then leaving for 5s would save B's content to A's path.
@@ -597,8 +591,6 @@ const ExcalidrawWrapper = () => {
             </div>
           )}
 
-          {!isSidebarPinned && <AppSidebar />}
-
           {errorMessage && (
             <ErrorDialog onClose={() => setErrorMessage("")}>
               {errorMessage}
@@ -639,7 +631,6 @@ const ExcalidrawWrapper = () => {
           )}
         </Excalidraw>
       </div>
-      {isSidebarPinned && <PinnedPanel />}
     </div>
   );
 };
