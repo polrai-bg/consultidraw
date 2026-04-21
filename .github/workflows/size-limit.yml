@@ -10,19 +10,28 @@ jobs:
       CI_JOB_NUMBER: 1
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 20.x
-      - name: Install in packages/excalidraw
-        run: yarn
+          cache: yarn
+          cache-dependency-path: |
+            yarn.lock
+            packages/excalidraw/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build ESM bundle
+        run: yarn build:esm
         working-directory: packages/excalidraw
         env:
           CI: true
-      - uses: andresz1/size-limit-action@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          build_script: build:esm
-          skip_step: install
-          directory: packages/excalidraw
+
+      - name: Check size limits
+        working-directory: packages/excalidraw
+        run: |
+          (yarn -s size-limit --json || true) | tee /tmp/size-limit.json
+          node -e 'const fs=require("fs");const results=JSON.parse(fs.readFileSync("/tmp/size-limit.json","utf8"));if(!results.every((entry)=>entry.passed)){process.exit(1)}'
