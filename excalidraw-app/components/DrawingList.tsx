@@ -136,17 +136,11 @@ export const DrawingList: React.FC = () => {
         await Promise.race([
           saveCurrentDrawing(excalidrawAPI),
           new Promise<void>((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Save timed out")),
-              8_000,
-            ),
+            setTimeout(() => reject(new Error("Save timed out")), 8_000),
           ),
         ]).catch((err) => {
           // Non-fatal: log and continue to load the new drawing
-          console.warn(
-            "Could not save current drawing before switching:",
-            err,
-          );
+          console.warn("Could not save current drawing before switching:", err);
         });
       }
 
@@ -179,8 +173,7 @@ export const DrawingList: React.FC = () => {
           appState: {
             ...appState,
             name:
-              drawings.find((d) => d.id === drawingId)?.name ||
-              appState.name,
+              drawings.find((d) => d.id === drawingId)?.name || appState.name,
           },
           captureUpdate: CaptureUpdateAction.IMMEDIATELY,
         });
@@ -421,7 +414,14 @@ export const DrawingList: React.FC = () => {
   // ---------------------------------------------------------------------------
 
   return (
-    <div style={{ padding: "0.5rem", display: "flex", flexDirection: "column", height: "100%" }}>
+    <div
+      style={{
+        padding: "0.5rem",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+      }}
+    >
       {/* Header */}
       <div
         style={{

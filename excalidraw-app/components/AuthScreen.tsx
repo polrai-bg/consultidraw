@@ -43,12 +43,12 @@ export const AuthScreen: React.FC = () => {
         err.code === "auth/user-not-found"
           ? "User not found. Please register first."
           : err.code === "auth/wrong-password"
-            ? "Incorrect password."
-            : err.code === "auth/email-already-in-use"
-              ? "Email already in use."
-              : err.code === "auth/weak-password"
-                ? "Password must be at least 6 characters."
-                : err.message || "Authentication failed";
+          ? "Incorrect password."
+          : err.code === "auth/email-already-in-use"
+          ? "Email already in use."
+          : err.code === "auth/weak-password"
+          ? "Password must be at least 6 characters."
+          : err.message || "Authentication failed";
 
       setError(errorMessage);
       setAuthError(errorMessage);
@@ -102,7 +102,10 @@ export const AuthScreen: React.FC = () => {
             : "Create a new account"}
         </p>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+        >
           <div>
             <label
               style={{
@@ -191,11 +194,16 @@ export const AuthScreen: React.FC = () => {
               borderRadius: "4px",
               fontSize: "1rem",
               fontWeight: 500,
-              cursor: isLoading || !email || !password ? "not-allowed" : "pointer",
+              cursor:
+                isLoading || !email || !password ? "not-allowed" : "pointer",
               transition: "background 0.2s",
             }}
           >
-            {isLoading ? "Loading..." : mode === "login" ? "Sign In" : "Sign Up"}
+            {isLoading
+              ? "Loading..."
+              : mode === "login"
+              ? "Sign In"
+              : "Sign Up"}
           </button>
         </form>
 
@@ -207,7 +215,13 @@ export const AuthScreen: React.FC = () => {
             paddingTop: "1.5rem",
           }}
         >
-          <p style={{ color: "#666", fontSize: "0.9rem", marginBottom: "0.5rem" }}>
+          <p
+            style={{
+              color: "#666",
+              fontSize: "0.9rem",
+              marginBottom: "0.5rem",
+            }}
+          >
             {mode === "login"
               ? "Don't have an account?"
               : "Already have an account?"}

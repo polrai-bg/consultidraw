@@ -23,8 +23,14 @@ interface FolderTreeProps {
   onRenameFolder: (id: string, name: string) => Promise<void>;
   onDeleteDrawing: (id: string, name: string) => Promise<void>;
   onDeleteFolder: (id: string, name: string) => Promise<void>;
-  onMoveDrawing: (drawingId: string, targetFolderId: string | null) => Promise<void>;
-  onMoveFolder: (folderId: string, targetParentId: string | null) => Promise<void>;
+  onMoveDrawing: (
+    drawingId: string,
+    targetFolderId: string | null,
+  ) => Promise<void>;
+  onMoveFolder: (
+    folderId: string,
+    targetParentId: string | null,
+  ) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -221,8 +227,12 @@ const DrawingRow: React.FC<{
           onChange={(e) => setEditVal(e.target.value)}
           onBlur={commitRename}
           onKeyDown={(e) => {
-            if (e.key === "Enter") commitRename();
-            if (e.key === "Escape") setEditing(false);
+            if (e.key === "Enter") {
+              commitRename();
+            }
+            if (e.key === "Escape") {
+              setEditing(false);
+            }
           }}
           onClick={(e) => e.stopPropagation()}
           style={{
@@ -298,8 +308,14 @@ const FolderNode: React.FC<{
   onDeleteFolder: (id: string, name: string) => Promise<void>;
   onCreateDrawing: (name: string, folderId: string | null) => Promise<void>;
   onCreateFolder: (name: string, parentId: string | null) => Promise<void>;
-  onMoveDrawing: (drawingId: string, targetFolderId: string | null) => Promise<void>;
-  onMoveFolder: (folderId: string, targetParentId: string | null) => Promise<void>;
+  onMoveDrawing: (
+    drawingId: string,
+    targetFolderId: string | null,
+  ) => Promise<void>;
+  onMoveFolder: (
+    folderId: string,
+    targetParentId: string | null,
+  ) => Promise<void>;
   onDragStart: (state: DragState) => void;
   onDragOver: (id: string) => void;
   onDragLeave: () => void;
@@ -330,7 +346,9 @@ const FolderNode: React.FC<{
   const [expanded, setExpanded] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editVal, setEditVal] = useState(folder.name);
-  const [creatingType, setCreatingType] = useState<"drawing" | "folder" | null>(null);
+  const [creatingType, setCreatingType] = useState<"drawing" | "folder" | null>(
+    null,
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   const childFolders = allFolders.filter((f) => f.parentId === folder.id);
@@ -359,7 +377,9 @@ const FolderNode: React.FC<{
           e.preventDefault();
           e.stopPropagation();
           // Don't allow dropping a folder into itself or its descendant
-          if (dragState?.type === "folder" && dragState.id === folder.id) return;
+          if (dragState?.type === "folder" && dragState.id === folder.id) {
+            return;
+          }
           onDragOver(folder.id);
         }}
         onDrop={(e) => {
@@ -418,8 +438,12 @@ const FolderNode: React.FC<{
             onChange={(e) => setEditVal(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename();
-              if (e.key === "Escape") setEditing(false);
+              if (e.key === "Enter") {
+                commitRename();
+              }
+              if (e.key === "Escape") {
+                setEditing(false);
+              }
             }}
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -541,7 +565,9 @@ const FolderNode: React.FC<{
               onSelect={() => onSelectDrawing(drawing.id)}
               onRename={(name) => onRenameDrawing(drawing.id, name)}
               onDelete={() => onDeleteDrawing(drawing.id, drawing.name)}
-              onDragStart={() => onDragStart({ type: "drawing", id: drawing.id })}
+              onDragStart={() =>
+                onDragStart({ type: "drawing", id: drawing.id })
+              }
               onDragOver={(e) => {
                 e.preventDefault();
                 onDragOver(drawing.id);
@@ -604,13 +630,17 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
 }) => {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [creatingAtRoot, setCreatingAtRoot] = useState<"drawing" | "folder" | null>(null);
+  const [creatingAtRoot, setCreatingAtRoot] = useState<
+    "drawing" | "folder" | null
+  >(null);
 
   const rootFolders = folders.filter((f) => f.parentId === null);
   const rootDrawings = drawings.filter((d) => d.folderId === null);
 
   const handleDrop = async (targetFolderId: string | null) => {
-    if (!dragState) return;
+    if (!dragState) {
+      return;
+    }
     setDragOverId(null);
 
     if (dragState.type === "drawing") {
@@ -660,7 +690,10 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
           minHeight: "4px",
           borderRadius: "4px",
           background: dragOverId === "__root__" ? "#e8e7fc55" : "transparent",
-          border: dragOverId === "__root__" ? "1px dashed #6965db" : "1px solid transparent",
+          border:
+            dragOverId === "__root__"
+              ? "1px dashed #6965db"
+              : "1px solid transparent",
           marginBottom: "2px",
         }}
       />
