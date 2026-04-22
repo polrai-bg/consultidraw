@@ -40,7 +40,10 @@ import {
 
 import { FolderTree } from "./FolderTree";
 
-export const DrawingList: React.FC = () => {
+export const DrawingList: React.FC<{
+  onDrawingSelected?: () => void;
+  showPinButton?: boolean;
+}> = ({ onDrawingSelected, showPinButton = true }) => {
   const excalidrawAPI = useExcalidrawAPI();
   const [clients] = useAtom(clientsAtom);
   const [currentClientId, setCurrentClientId] = useAtom(currentClientIdAtom);
@@ -161,6 +164,7 @@ export const DrawingList: React.FC = () => {
       ]);
 
       setCurrentDrawingId(drawingId);
+      onDrawingSelected?.();
 
       if (scene) {
         const elements = restoreElements(scene.elements, null, {
@@ -470,27 +474,29 @@ export const DrawingList: React.FC = () => {
             {isLoading ? "Loading…" : "Saving…"}
           </span>
         )}
-        <button
-          onClick={handleTogglePin}
-          title={isSidebarPinned ? "Unpin panel" : "Pin panel open"}
-          style={{
-            background: isSidebarPinned
-              ? "var(--color-primary-light, #e8e7fc)"
-              : "none",
-            border: "none",
-            cursor: "pointer",
-            padding: "0.2rem 0.3rem",
-            fontSize: "0.8rem",
-            borderRadius: "4px",
-            color: isSidebarPinned
-              ? "#6965db"
-              : "var(--color-on-surface, #999)",
-            flexShrink: 0,
-            lineHeight: 1,
-          }}
-        >
-          📌
-        </button>
+        {showPinButton && (
+          <button
+            onClick={handleTogglePin}
+            title={isSidebarPinned ? "Unpin panel" : "Pin panel open"}
+            style={{
+              background: isSidebarPinned
+                ? "var(--color-primary-light, #e8e7fc)"
+                : "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0.2rem 0.3rem",
+              fontSize: "0.8rem",
+              borderRadius: "4px",
+              color: isSidebarPinned
+                ? "#6965db"
+                : "var(--color-on-surface, #999)",
+              flexShrink: 0,
+              lineHeight: 1,
+            }}
+          >
+            📌
+          </button>
+        )}
       </div>
 
       {/* Error banner */}

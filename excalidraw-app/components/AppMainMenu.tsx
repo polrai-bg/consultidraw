@@ -17,13 +17,21 @@ import { isDevEnv } from "@excalidraw/common";
 
 import type { Theme } from "@excalidraw/element/types";
 
-import { saveScene, createDrawing } from "../data/firebase";
+import {
+  saveScene,
+  createDrawing,
+  getOrCreateUncategorizedClient,
+  getDrawings,
+  getFolders,
+} from "../data/firebase";
 import {
   currentClientIdAtom,
   currentDrawingIdAtom,
+  drawingsAtom,
+  foldersAtom,
   isSavingAtom,
 } from "../store/drawingState";
-import { useAtomValue, useAtom } from "../app-jotai";
+import { useAtom } from "../app-jotai";
 
 import { LanguageList } from "../app-language/LanguageList";
 import { logoutUser } from "../data/firebase";
@@ -39,8 +47,10 @@ export const AppMainMenu: React.FC<{
   refresh: () => void;
 }> = React.memo((props) => {
   const excalidrawAPI = useExcalidrawAPI();
-  const currentClientId = useAtomValue(currentClientIdAtom);
+  const [currentClientId, setCurrentClientId] = useAtom(currentClientIdAtom);
   const [currentDrawingId, setCurrentDrawingId] = useAtom(currentDrawingIdAtom);
+  const [, setDrawings] = useAtom(drawingsAtom);
+  const [, setFolders] = useAtom(foldersAtom);
   const [, setIsSaving] = useAtom(isSavingAtom);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
 
@@ -69,73 +79,149 @@ export const AppMainMenu: React.FC<{
     }
   }, [excalidrawAPI, currentClientId, currentDrawingId, setIsSaving]);
 
-  const handleNewProject = useCallback(async () => {
-    if (!currentClientId) {
-      window.alert("Please select a client from 'Open Project' first.");
-      return;
-    }
-    const name = window.prompt("Enter new project name:");
-    if (!name) {
-      return;
-    }
-
-    if (excalidrawAPI && currentDrawingId) {
-      // Auto-save current
-      handleSaveProject();
-    }
-
-    try {
-      const drawing = await createDrawing(currentClientId, name, null);
-      setCurrentDrawingId(drawing.id);
-      if (excalidrawAPI) {
-        excalidrawAPI.resetScene();
-        excalidrawAPI.updateScene({
-          appState: { name: drawing.name },
-          captureUpdate: CaptureUpdateAction.NEVER,
-        });
+  const createUncategorizedProject = useCallback(
+    async (promptName = true) => {
+      const name = promptName
+        ? window.prompt(
+            "Enter project name:",
+            `Untitled ${new Date().toLocaleString()}`,
+          )
+        : `Untitled ${new Date().toLocaleString()}`;
+      if (!name) {
+        return;
       }
-    } catch (error) {
-      console.error("Error creating project:", error);
-    }
-  }, [
-    currentClientId,
-    currentDrawingId,
-    excalidrawAPI,
-    handleSaveProject,
-    setCurrentDrawingId,
-  ]);
+
+      if (excalidrawAPI && currentClientId && currentDrawingId) {
+        try {
+          await saveScene(
+            currentClientId,
+            currentDrawingId,
+            excalidrawAPI.getSceneElements(),
+            excalidrawAPI.getAppState(),
+            excalidrawAPI.getFiles(),
+          );
+        } catch (error) {
+          console.warn(
+            "Could not save current drawing before switching:",
+            error,
+          );
+        }
+      }
+
+      try {
+        const client = await getOrCreateUncategorizedClient();
+        const drawing = await createDrawing(client.id, name, null);
+        setCurrentClientId(client.id);
+        setCurrentDrawingId(drawing.id);
+        const [drawingsResult, foldersResult] = await Promise.allSettled([
+          getDrawings(client.id),
+          getFolders(client.id),
+        ]);
+        if (drawingsResult.status === "fulfilled") {
+          setDrawings(drawingsResult.value);
+        }
+        if (foldersResult.status === "fulfilled") {
+          setFolders(foldersResult.value);
+        }
+        if (excalidrawAPI) {
+          excalidrawAPI.resetScene();
+          excalidrawAPI.updateScene({
+            appState: { name: drawing.name },
+            captureUpdate: CaptureUpdateAction.NEVER,
+          });
+        }
+      } catch (error) {
+        console.error("Error creating project:", error);
+        window.alert("Error creating project");
+      }
+    },
+    [
+      excalidrawAPI,
+      currentClientId,
+      currentDrawingId,
+      setCurrentClientId,
+      setCurrentDrawingId,
+      setDrawings,
+      setFolders,
+    ],
+  );
 
   return (
-    <MainMenu>
-      <MainMenu.DefaultItems.LoadScene />
-      <MainMenu.DefaultItems.SaveToActiveFile />
-      <MainMenu.DefaultItems.Export />
-      <MainMenu.DefaultItems.SaveAsImage />
-      <MainMenu.DefaultItems.CommandPalette className="highlighted" />
-      <MainMenu.DefaultItems.SearchMenu />
-      <MainMenu.DefaultItems.Help />
-      <MainMenu.DefaultItems.ClearCanvas />
+    <>
+      <MainMenu>
+        <MainMenu.DefaultItems.LoadScene />
+        <MainMenu.DefaultItems.SaveToActiveFile />
+        <MainMenu.DefaultItems.Export />
+        <MainMenu.DefaultItems.SaveAsImage />
+        <MainMenu.DefaultItems.CommandPalette className="highlighted" />
+        <MainMenu.DefaultItems.SearchMenu />
+        <MainMenu.DefaultItems.Help />
+        <MainMenu.DefaultItems.ClearCanvas />
 
-      <MainMenu.Group title="Workspace">
-        <MainMenu.Item icon={PlusIcon} onSelect={handleNewProject}>
-          New Project
-        </MainMenu.Item>
-        <MainMenu.Item icon={save} onSelect={handleSaveProject}>
-          Save Project
-        </MainMenu.Item>
+        <MainMenu.Group title="Workspace">
+          <MainMenu.Item
+            icon={PlusIcon}
+            onSelect={() => createUncategorizedProject(true)}
+          >
+            New Project
+          </MainMenu.Item>
+          <MainMenu.Item icon={save} onSelect={handleSaveProject}>
+            Save Project
+          </MainMenu.Item>
+          <MainMenu.Item
+            icon={LoadIcon}
+            onSelect={() => setIsWorkspaceModalOpen(true)}
+          >
+            Open Project
+          </MainMenu.Item>
+        </MainMenu.Group>
+
+        <MainMenu.Separator />
+
+        {isDevEnv() && (
+          <MainMenu.Item
+            icon={eyeIcon}
+            onSelect={() => {
+              if (window.visualDebug) {
+                delete window.visualDebug;
+                saveDebugState({ enabled: false });
+              } else {
+                window.visualDebug = { data: [] };
+                saveDebugState({ enabled: true });
+              }
+              props?.refresh();
+            }}
+          >
+            Visual Debug
+          </MainMenu.Item>
+        )}
+        <MainMenu.Separator />
+        <MainMenu.DefaultItems.Preferences />
+        <MainMenu.DefaultItems.ToggleTheme
+          allowSystemTheme
+          theme={props.theme}
+          onSelect={props.setTheme}
+        />
+        <MainMenu.ItemCustom>
+          <LanguageList style={{ width: "100%" }} />
+        </MainMenu.ItemCustom>
+        <MainMenu.DefaultItems.ChangeCanvasBackground />
+        <MainMenu.Separator />
         <MainMenu.Item
-          icon={LoadIcon}
-          onSelect={() => setIsWorkspaceModalOpen(true)}
+          onSelect={async () => {
+            await logoutUser();
+          }}
         >
-          Open Project
+          Sign out
         </MainMenu.Item>
-      </MainMenu.Group>
+      </MainMenu>
 
       {isWorkspaceModalOpen && (
         <Dialog
           title="Open Project"
           onCloseRequest={() => setIsWorkspaceModalOpen(false)}
           size="regular"
+          closeOnClickOutside={false}
         >
           <div style={{ display: "flex", height: "60vh", gap: "1rem" }}>
             <div
@@ -143,60 +229,55 @@ export const AppMainMenu: React.FC<{
                 flex: 1,
                 borderRight: "1px solid var(--color-border-outline, #e0e0e0)",
                 paddingRight: "1rem",
+                overflowY: "auto",
               }}
             >
-              <h3>Clients</h3>
-              <ClientList />
+              <h3 style={{ margin: "0 0 0.5rem" }}>Clients</h3>
+              <button
+                onClick={async () => {
+                  setIsWorkspaceModalOpen(false);
+                  await createUncategorizedProject(false);
+                }}
+                style={{
+                  width: "100%",
+                  marginBottom: "0.75rem",
+                  padding: "0.5rem",
+                  fontSize: "0.8rem",
+                  background: "#6965db",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                + Start blank project (Uncategorized)
+              </button>
+              <ClientList showPinButton={false} />
             </div>
-            <div style={{ flex: 2, paddingLeft: "1rem" }}>
-              <h3>Drawings</h3>
+            <div
+              style={{
+                flex: 2,
+                paddingLeft: "1rem",
+                overflowY: "auto",
+              }}
+            >
+              <h3 style={{ margin: "0 0 0.5rem" }}>Drawings</h3>
               {currentClientId ? (
-                <DrawingList />
+                <DrawingList
+                  showPinButton={false}
+                  onDrawingSelected={() => setIsWorkspaceModalOpen(false)}
+                />
               ) : (
-                <p>Select a client to view their drawings.</p>
+                <p style={{ color: "var(--color-on-surface, #999)" }}>
+                  Select a client to view their drawings, or start a blank
+                  project.
+                </p>
               )}
             </div>
           </div>
         </Dialog>
       )}
-      <MainMenu.Separator />
-
-      {isDevEnv() && (
-        <MainMenu.Item
-          icon={eyeIcon}
-          onSelect={() => {
-            if (window.visualDebug) {
-              delete window.visualDebug;
-              saveDebugState({ enabled: false });
-            } else {
-              window.visualDebug = { data: [] };
-              saveDebugState({ enabled: true });
-            }
-            props?.refresh();
-          }}
-        >
-          Visual Debug
-        </MainMenu.Item>
-      )}
-      <MainMenu.Separator />
-      <MainMenu.DefaultItems.Preferences />
-      <MainMenu.DefaultItems.ToggleTheme
-        allowSystemTheme
-        theme={props.theme}
-        onSelect={props.setTheme}
-      />
-      <MainMenu.ItemCustom>
-        <LanguageList style={{ width: "100%" }} />
-      </MainMenu.ItemCustom>
-      <MainMenu.DefaultItems.ChangeCanvasBackground />
-      <MainMenu.Separator />
-      <MainMenu.Item
-        onSelect={async () => {
-          await logoutUser();
-        }}
-      >
-        Sign out
-      </MainMenu.Item>
-    </MainMenu>
+    </>
   );
 });
