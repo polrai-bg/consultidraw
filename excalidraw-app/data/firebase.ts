@@ -162,6 +162,19 @@ export const createClient = async (name: string): Promise<Client> => {
   };
 };
 
+export const UNCATEGORIZED_CLIENT_NAME = "Uncategorized";
+
+export const getOrCreateUncategorizedClient = async (): Promise<Client> => {
+  const clients = await getClients();
+  const existing = clients.find(
+    (c) => c.name.toLowerCase() === UNCATEGORIZED_CLIENT_NAME.toLowerCase(),
+  );
+  if (existing) {
+    return existing;
+  }
+  return createClient(UNCATEGORIZED_CLIENT_NAME);
+};
+
 export const updateClient = async (id: string, name: string): Promise<void> => {
   const db = _getFirestore();
   await updateDoc(doc(db, "clients", id), {

@@ -86,6 +86,13 @@
   }
 }
 
+.excalidraw {
+  .default-sidebar-trigger,
+  .sidebar.default-sidebar {
+    display: none !important;
+  }
+}
+
 .plus-banner {
   display: flex;
   justify-content: center;
