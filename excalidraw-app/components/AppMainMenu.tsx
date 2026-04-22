@@ -101,7 +101,10 @@ export const AppMainMenu: React.FC<{
             excalidrawAPI.getFiles(),
           );
         } catch (error) {
-          console.warn("Could not save current drawing before switching:", error);
+          console.warn(
+            "Could not save current drawing before switching:",
+            error,
+          );
         }
       }
 
