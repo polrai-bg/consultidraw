@@ -306,8 +306,16 @@ const calculateContrast = (r: number, g: number, b: number): number => {
   return yiq;
 };
 
+const colorDarknessCache = new Map<string, boolean>();
+
 // YIQ algo, inspiration from https://stackoverflow.com/a/11868398
 export const isColorDark = (color: string, threshold = 160): boolean => {
+  const cacheKey = `${color},${threshold}`;
+  const cached = colorDarknessCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   // no color ("") -> assume it default to black
   if (!color) {
     return true;
