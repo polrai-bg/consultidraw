@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from "react";
 
+import { useExcalidrawAPI, CaptureUpdateAction } from "@excalidraw/excalidraw";
+
 import { useAtom } from "../app-jotai";
 
 import {
@@ -7,10 +9,12 @@ import {
   createClient,
   deleteClient,
   updateClient,
+  saveScene,
 } from "../data/firebase";
 import {
   clientsAtom,
   currentClientIdAtom,
+  currentDrawingIdAtom,
   drawingsAtom,
   foldersAtom,
   isSidebarPinnedAtom,
@@ -20,8 +24,10 @@ import { getDrawings, getFolders } from "../data/firebase";
 export const ClientList: React.FC<{ showPinButton?: boolean }> = ({
   showPinButton = true,
 }) => {
+  const excalidrawAPI = useExcalidrawAPI();
   const [clients, setClients] = useAtom(clientsAtom);
-  const [, setCurrentClientId] = useAtom(currentClientIdAtom);
+  const [currentClientId, setCurrentClientId] = useAtom(currentClientIdAtom);
+  const [currentDrawingId, setCurrentDrawingId] = useAtom(currentDrawingIdAtom);
   const [, setDrawings] = useAtom(drawingsAtom);
   const [, setFolders] = useAtom(foldersAtom);
   const [isSidebarPinned, setIsSidebarPinned] = useAtom(isSidebarPinnedAtom);
@@ -97,7 +103,40 @@ export const ClientList: React.FC<{ showPinButton?: boolean }> = ({
   };
 
   const handleSelectClient = async (clientId: string) => {
+    if (clientId === currentClientId) {
+      return;
+    }
+
+    // Flush-save the currently open drawing under its OWN client before
+    // switching, otherwise the auto-save/save-before-load will fire with
+    // the new clientId + stale drawingId and 404 against Firestore.
+    if (excalidrawAPI && currentClientId && currentDrawingId) {
+      try {
+        await saveScene(
+          currentClientId,
+          currentDrawingId,
+          excalidrawAPI.getSceneElements(),
+          excalidrawAPI.getAppState(),
+          excalidrawAPI.getFiles(),
+        );
+      } catch (error) {
+        console.warn(
+          "Could not save current drawing before switching clients:",
+          error,
+        );
+      }
+    }
+
+    setCurrentDrawingId(null);
+    if (excalidrawAPI) {
+      excalidrawAPI.resetScene();
+      excalidrawAPI.updateScene({
+        appState: { name: "" },
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+    }
     setCurrentClientId(clientId);
+
     const [drawingsResult, foldersResult] = await Promise.allSettled([
       getDrawings(clientId),
       getFolders(clientId),
