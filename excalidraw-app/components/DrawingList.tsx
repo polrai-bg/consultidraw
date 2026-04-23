@@ -121,13 +121,14 @@ export const DrawingList: React.FC<{
   // ---------------------------------------------------------------------------
 
   const handleSelectDrawing = async (drawingId: string) => {
-    // Prevent re-entering while already loading or selecting the same drawing
-    if (
-      !currentClientId ||
-      !excalidrawAPI ||
-      drawingId === currentDrawingId ||
-      isLoading
-    ) {
+    if (!currentClientId || !excalidrawAPI || isLoading) {
+      return;
+    }
+
+    // Clicking the already-open drawing shouldn't reload it, but should
+    // still dismiss any open picker modal so the canvas becomes visible.
+    if (drawingId === currentDrawingId) {
+      onDrawingSelected?.();
       return;
     }
 
