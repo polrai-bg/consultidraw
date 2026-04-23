@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "https://consultidraw.web.app",
+      "https://consultidraw.firebaseapp.com",
+      "http://localhost:3000",
+      "http://localhost:5173"
+    ],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type"]
+  }
+]
